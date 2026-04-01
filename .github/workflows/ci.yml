@@ -1,27 +1,62 @@
-name: Ionic CI Pipeline
+name: Ionic Capacitor CI/CD
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
+  workflow_dispatch:
 
 jobs:
-  build:
+  build-android:
     runs-on: ubuntu-latest
 
+    env:
+      JAVA_VERSION: '17'
+
     steps:
+      # 1️⃣ Checkout code
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
+      # 2️⃣ Setup Node
       - name: Setup Node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
+          cache: 'npm'
 
+      # 3️⃣ Install dependencies
       - name: Install Dependencies
-        run: npm install
+        run: npm ci
 
-      - name: Build Angular App
-        run: npm run build
+      # 4️⃣ Install Ionic CLI
+      - name: Install Ionic CLI
+        run: npm install -g @ionic/cli
 
-      - name: Build Ionic App
-        run: ionic build
+      # 5️⃣ Build Ionic App
+      - name: Build Web App
+        run: ionic build --prod
+
+      # 6️⃣ Capacitor Sync
+      - name: Sync Capacitor
+        run: npx cap sync android
+
+      # 7️⃣ Setup Java (Required for Android)
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+
+      # 8️⃣ Build APK
+      - name: Build Android APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      # 9️⃣ Upload APK Artifact
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
