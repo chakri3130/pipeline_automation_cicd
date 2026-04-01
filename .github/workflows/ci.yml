@@ -1,59 +1,56 @@
-name: Ionic Capacitor CI/CD
+name: Ionic Multi-Env CI/CD
 
 on:
   push:
-    branches: ["main"]
-  workflow_dispatch:
+    branches: ["dev", "qa", "main"]
 
 jobs:
-  build-android:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout code
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      # 2️⃣ Setup Node (IMPORTANT)
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: 'npm'
 
-      # 3️⃣ Install dependencies
-      - name: Install Dependencies
-        run: npm ci
+      - run: npm ci
 
-      # 4️⃣ Install Ionic CLI
       - name: Install Ionic CLI
         run: npm install -g @ionic/cli
 
-      # 5️⃣ Build Ionic App
-      - name: Build App
-        run: ionic build --prod
+      # 🧠 Dynamic environment selection
+      - name: Set Environment
+        id: env
+        run: |
+          if [[ "${GITHUB_REF##*/}" == "dev" ]]; then
+            echo "config=development" >> $GITHUB_OUTPUT
+          elif [[ "${GITHUB_REF##*/}" == "qa" ]]; then
+            echo "config=qa" >> $GITHUB_OUTPUT
+          else
+            echo "config=production" >> $GITHUB_OUTPUT
+          fi
 
-      # 6️⃣ Sync Capacitor
+      - name: Build App
+        run: ionic build --configuration=${{ steps.env.outputs.config }}
+
       - name: Sync Capacitor
         run: npx cap sync android
 
-      # 7️⃣ Setup Java
-      - name: Setup Java
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: 21
 
-      # 8️⃣ Build APK
-      - name: Build Android APK
+      - name: Build APK
         run: |
           cd android
-          chmod +x gradlew
           ./gradlew assembleDebug
 
-      # 9️⃣ Upload APK
-      - name: Upload APK Artifact
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: android-apk
+          name: app-${{ steps.env.outputs.config }}
           path: android/app/build/outputs/apk/debug/app-debug.apk
