@@ -9,15 +9,12 @@ jobs:
   build-android:
     runs-on: ubuntu-latest
 
-    env:
-      JAVA_VERSION: '17'
-
     steps:
       # 1️⃣ Checkout code
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 2️⃣ Setup Node
+      # 2️⃣ Setup Node (IMPORTANT)
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -33,23 +30,19 @@ jobs:
         run: npm install -g @ionic/cli
 
       # 5️⃣ Build Ionic App
-      - name: Build Web App
+      - name: Build App
         run: ionic build --prod
 
-      # 5️⃣ Add Android Platform
-      - name: Add Android Platform
-        run: npx cap add android
-
-      # 6️⃣ Capacitor Sync
+      # 6️⃣ Sync Capacitor
       - name: Sync Capacitor
         run: npx cap sync android
 
-      # 7️⃣ Setup Java (Required for Android)
+      # 7️⃣ Setup Java
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: ${{ env.JAVA_VERSION }}
+          java-version: 17
 
       # 8️⃣ Build APK
       - name: Build Android APK
@@ -58,9 +51,9 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug
 
-      # 9️⃣ Upload APK Artifact
-      - name: Upload APK
+      # 9️⃣ Upload APK
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug-apk
+          name: android-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
